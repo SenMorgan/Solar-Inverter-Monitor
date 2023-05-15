@@ -1,10 +1,19 @@
+/**
+ * @file main.cpp
+ * @author SenMorgan https://github.com/SenMorgan
+ * @date 2023-05-23
+ *
+ * @copyright Copyright (c) 2023 Sen Morgan
+ *
+ */
+
 #include <Arduino.h>
 #include <ArduinoOTA.h>
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <Wire.h>
 #include <INA226.h>
-#include <EEPROM.h>
+// #include <EEPROM.h>
 
 #include "credentials.h"
 #include "def.h"
@@ -22,10 +31,20 @@ enum
     CONNECTED_TO_BROKER,
 } stage;
 
+enum
+{
+    MPPT_INIT,
+    MPPT_ADJUSTING,
+    MPPT_LOCKED,
+    ERROR,
+} mppt_state;
+
 // EEPROM variables
 float generated_wh;
 // Global variables
 float measured_V, measured_A, measured_P, saved_V, saved_A, saved_P;
+bool inverter_error;
+
 uint8_t mqtt_conn;
 uint32_t timestamp_on_wifi_begin, timestamp_last_published, timestamp_last_mqtt_reconn;
 uint32_t timestamp_on_mqtt_begin, timestamp_conn_failed, timestamp_pub_started;
@@ -49,26 +68,26 @@ void read_ina226_values(void)
     last_meas_timestamp = time_now;
 
     // Save values to EEPROM every 10 measurements
-    eeprom_cnt++;
-    if (eeprom_cnt > SAVE_WH_AFTER_CNT)
-    {
-        eeprom_cnt = 0;
-        bool eeprom_write_success = false;
-        while (!eeprom_write_success)
-        {
-            eeprom_write_success = EEPROM.put(0, generated_wh);
-            if (eeprom_write_success)
-            {
-                EEPROM.commit();
-            }
-            else
-            {
-                // If EEPROM write failed, wait 100ms and reset board
-                delay(100);
-                ESP.restart();
-            }
-        }
-    }
+    // eeprom_cnt++;
+    // if (eeprom_cnt > SAVE_WH_AFTER_CNT)
+    // {
+    //     eeprom_cnt = 0;
+    //     bool eeprom_write_success = false;
+    //     while (!eeprom_write_success)
+    //     {
+    //         eeprom_write_success = EEPROM.put(0, generated_wh);
+    //         if (eeprom_write_success)
+    //         {
+    //             // EEPROM.commit();
+    //         }
+    //         else
+    //         {
+    //             // If EEPROM write failed, wait 100ms and reset board
+    //             delay(100);
+    //             ESP.restart();
+    //         }
+    //     }
+    // }
 }
 
 int8_t read_signal_quality()
@@ -119,15 +138,15 @@ void callback(String topic, byte *payload, unsigned int length)
         {
             mqttClient.publish(MQTT_CMD_TOPIC_WH_RESET, MQTT_CMD_OFF, true);
             generated_wh = 0;
-            EEPROM.put(0, generated_wh);
-            EEPROM.commit();
+            // EEPROM.put(0, generated_wh);
+            // EEPROM.commit();
         }
     }
     else if (topic == MQTT_CMD_TOPIC_SET_WH)
     {
         generated_wh = msgString.toFloat();
-        EEPROM.put(0, generated_wh);
-        EEPROM.commit();
+        // EEPROM.put(0, generated_wh);
+        // EEPROM.commit();
     }
 }
 
@@ -148,6 +167,13 @@ void reconnect(void)
  */
 void publish_data()
 {
+    // Create mppt_state_str array
+    const char *mppt_state_str[] = {
+        "INIT",
+        "ADJUSTING",
+        "LOCKED",
+        "ERROR",
+    };
     static char buff[20];
 
     mqttClient.publish(MQTT_WILL_TOPIC, MQTT_AVAILABILITY_MESSAGE);
@@ -160,7 +186,8 @@ void publish_data()
     mqttClient.publish(MQTT_STATE_TOPIC_POWER, buff);
     sprintf(buff, "%0.3f", generated_wh);
     mqttClient.publish(MQTT_STATE_TOPIC_WH, buff);
-
+    mqttClient.publish(MQTT_STATE_TOPIC_MPPT_STATE, mppt_state_str[mppt_state]);
+    mqttClient.publish(MQTT_STATE_TOPIC_INVERTER_ERROR, String(inverter_error).c_str());
     mqttClient.publish(MQTT_STATE_TOPIC_SIG, String(signal_quality).c_str());
     mqttClient.publish(MQTT_STATE_TOPIC_UPTIME, String(millis() / 1000).c_str());
 }
@@ -222,7 +249,7 @@ void state_machine()
                 {
                     timestamp_on_mqtt_begin = 0;
                     timestamp_pub_started = millis();
-                    analogWrite(STATUS_LED, 10);
+                    analogWrite(STATUS_LED, 240);
                     stage = CONNECTED_TO_BROKER;
                 }
                 else if (!timestamp_last_mqtt_reconn || millis() - timestamp_last_mqtt_reconn > MQTT_RECONN_PERIOD_MS)
@@ -261,16 +288,85 @@ void state_machine()
     }
 }
 
+void read_inverter_states()
+{
+    static unsigned long error_start_time = 0;
+    static unsigned long pulse_start_time = 0;
+    static unsigned long pulse_period = 0;
+
+    // Measure inputs
+    bool inverter_run_input = digitalRead(INVERTER_RUN);
+    int inverter_error_input = analogRead(INVERTER_ERROR);
+
+    // Check if mppt_locked flag should be set
+    static unsigned long run_start_time = 0;
+    if (inverter_run_input)
+    {
+        if (millis() - run_start_time > CONSIDER_MPPT_LOCKED_MS)
+        {
+            mppt_state = MPPT_LOCKED;
+        }
+    }
+    else
+    {
+        run_start_time = millis();
+    }
+
+    // Check if mppt_adjusting flag should be set
+    // Get pulse whole period
+    if (inverter_run_input)
+    {
+        if (pulse_start_time == 0)
+        {
+            pulse_start_time = millis();
+        }
+    }
+    else
+    {
+        if (pulse_start_time != 0)
+        {
+            pulse_period = millis() - pulse_start_time;
+            pulse_start_time = 0;
+        }
+
+        // If pulse period is in range, then MPPT is adjusting
+        if (pulse_period > 500 && pulse_period < 1500)
+        {
+            mppt_state = MPPT_ADJUSTING;
+        }
+    }
+
+    // Check if inverter_error flag should be set
+    if (inverter_error_input > 400)
+    {
+        if (millis() - error_start_time > 5000)
+        {
+            inverter_error = true;
+        }
+    }
+    else
+    {
+        inverter_error = false;
+        mppt_state = ERROR;
+        // Reset error_start_time
+        error_start_time = millis();
+    }
+}
+
 void setup()
 {
-    EEPROM.begin(4);
+    mppt_state = MPPT_INIT;
+
+    // EEPROM.begin(4);
     // EEPROM.put(0, generated_wh); // erase EEPROM
-    EEPROM.get(0, generated_wh);
+    // EEPROM.get(0, generated_wh);
 
     Wire.begin(SDA_PIN, SCL_PIN);
 
+    pinMode(INVERTER_RUN, INPUT);
+    pinMode(INVERTER_ERROR, INPUT);
     pinMode(STATUS_LED, OUTPUT);
-    digitalWrite(STATUS_LED, 1);
+    digitalWrite(STATUS_LED, 0);
 
     WiFi.mode(WIFI_OFF);
     WiFi.hostname(HOSTNAME);
@@ -283,6 +379,10 @@ void setup()
     ArduinoOTA.setHostname(OTA_HOSTNAME);
     ArduinoOTA.setPassword(OTA_PASSWORD);
     ArduinoOTA.begin();
+    ArduinoOTA.onProgress([](uint16_t progress, uint16_t total)
+                          { digitalWrite(STATUS_LED, !digitalRead(STATUS_LED)); });
+    ArduinoOTA.onEnd([]()
+                     { digitalWrite(STATUS_LED, 1); });
 
     ina226.begin(INA226_ADDRESS);
     // When set INA226_AVERAGES_64 and INA226_SHUNT_CONV_TIME_8244US, the period is about 1 second
@@ -295,6 +395,8 @@ void setup()
 void loop()
 {
     read_ina226_values();
+
+    read_inverter_states();
 
     state_machine();
 

@@ -1,7 +1,7 @@
 /**
  * @file def.h
  * @author SenMorgan https://github.com/SenMorgan
- * @date 2022-06-18
+ * @date 2023-05-23
  *
  * @copyright Copyright (c) 2023 Sen Morgan
  *
@@ -15,24 +15,29 @@
 #define MAX_CURRENT_EXCEPTED_A 4.0F
 
 // MQTT definitions
-#define DEFAULT_TOPIC             "/solar-inverter-monitor/"
-#define MQTT_WILL_TOPIC           DEFAULT_TOPIC "availability"
-#define MQTT_QOS                  1
-#define MQTT_RETAIN               0
-#define MQTT_WILL_MESSAGE         "offline"
-#define MQTT_AVAILABILITY_MESSAGE "online"
-#define MQTT_SUBSCRIBE_TOPIC      DEFAULT_TOPIC "set/#"
-#define MQTT_CMD_TOPIC_RESET      DEFAULT_TOPIC "set/reset"
-#define MQTT_CMD_TOPIC_WH_RESET   DEFAULT_TOPIC "set/wh-reset"
-#define MQTT_CMD_TOPIC_SET_WH     DEFAULT_TOPIC "set/wh"
-#define MQTT_STATE_TOPIC_VOLT     DEFAULT_TOPIC "state/volt"
-#define MQTT_STATE_TOPIC_AMP      DEFAULT_TOPIC "state/amp"
-#define MQTT_STATE_TOPIC_POWER    DEFAULT_TOPIC "state/watt"
-#define MQTT_STATE_TOPIC_WH       DEFAULT_TOPIC "state/wh"
-#define MQTT_STATE_TOPIC_SIG      DEFAULT_TOPIC "state/signal-quality"
-#define MQTT_STATE_TOPIC_UPTIME   DEFAULT_TOPIC "state/uptime"
-#define MQTT_CMD_ON               "1"
-#define MQTT_CMD_OFF              "0"
+#define DEFAULT_TOPIC                   "/solar-inverter-monitor/"
+#define MQTT_WILL_TOPIC                 DEFAULT_TOPIC "availability"
+#define MQTT_QOS                        1
+#define MQTT_RETAIN                     0
+#define MQTT_WILL_MESSAGE               "offline"
+#define MQTT_AVAILABILITY_MESSAGE       "online"
+#define MQTT_SUBSCRIBE_TOPIC            DEFAULT_TOPIC "set/#"
+#define MQTT_CMD_TOPIC_RESET            DEFAULT_TOPIC "set/reset"
+#define MQTT_CMD_TOPIC_WH_RESET         DEFAULT_TOPIC "set/wh-reset"
+#define MQTT_CMD_TOPIC_SET_WH           DEFAULT_TOPIC "set/wh"
+#define MQTT_STATE_TOPIC_VOLT           DEFAULT_TOPIC "state/volt"
+#define MQTT_STATE_TOPIC_AMP            DEFAULT_TOPIC "state/amp"
+#define MQTT_STATE_TOPIC_POWER          DEFAULT_TOPIC "state/watt"
+#define MQTT_STATE_TOPIC_WH             DEFAULT_TOPIC "state/wh"
+#define MQTT_STATE_TOPIC_MPPT_STATE     DEFAULT_TOPIC "state/mppt"
+#define MQTT_STATE_TOPIC_INVERTER_ERROR DEFAULT_TOPIC "state/error"
+#define MQTT_STATE_TOPIC_SIG            DEFAULT_TOPIC "state/signal-quality"
+#define MQTT_STATE_TOPIC_UPTIME         DEFAULT_TOPIC "state/uptime"
+#define MQTT_CMD_ON                     "1"
+#define MQTT_CMD_OFF                    "0"
+
+// Inverter constants
+#define CONSIDER_MPPT_LOCKED_MS 5000
 
 // Interval between publishing data
 #define PUBLISH_INTERVAL_FAST_MS 1000
@@ -47,12 +52,10 @@
 #define SAVE_WH_AFTER_CNT        10
 
 // IO pins
-#define SDA_PIN          0
-#define SCL_PIN          2
-#define INA226_ALERT_PIN 3
-/** WARN: ESP-01 built-in LED can't be used if I2C is enabled on GPIO 2
- * so we are using GPIO 1 (TX pin) and external LED
- */
-#define STATUS_LED       1
+#define SDA_PIN        4
+#define SCL_PIN        5
+#define INVERTER_RUN   14
+#define INVERTER_ERROR A0
+#define STATUS_LED     2
 
 #endif // _DEF_H_
