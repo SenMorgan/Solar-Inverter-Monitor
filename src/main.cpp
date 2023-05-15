@@ -342,12 +342,12 @@ void read_inverter_states()
         if (millis() - error_start_time > 5000)
         {
             inverter_error = true;
+            mppt_state = ERROR;
         }
     }
     else
     {
         inverter_error = false;
-        mppt_state = ERROR;
         // Reset error_start_time
         error_start_time = millis();
     }
