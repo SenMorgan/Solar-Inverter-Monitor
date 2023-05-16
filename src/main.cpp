@@ -52,7 +52,7 @@ int8_t signal_quality;
 void read_ina226_values(void)
 {
     static uint32_t last_meas_timestamp;
-    static int eeprom_cnt;
+    // static int eeprom_cnt;
 
     measured_V = ina226.readBusVoltage();
     measured_A = ina226.readShuntCurrent();
@@ -229,12 +229,8 @@ void state_machine()
             break;
 
         case WIFI_CONNECTED:
-            // Blink with LED while connecting
-            digitalWrite(STATUS_LED, !digitalRead(STATUS_LED));
-            delay(50); // Delay for yield
-
+            // Handler for OTA update
             ArduinoOTA.handle();
-
             // If lost WIFi connection
             if (WiFi.status() != WL_CONNECTED)
             {
