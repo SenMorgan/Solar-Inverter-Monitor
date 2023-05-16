@@ -12,7 +12,7 @@
 
 // INA226 settings
 #define SHUNT_VALUE            0.01F
-#define MAX_CURRENT_EXCEPTED_A 4.0F
+#define MAX_CURRENT_EXCEPTED_A 6.0F
 
 // MQTT definitions
 #define DEFAULT_TOPIC                   "/solar-inverter-monitor/"
