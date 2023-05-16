@@ -43,7 +43,6 @@ enum
 float generated_wh;
 // Global variables
 float measured_V, measured_A, measured_P, saved_V, saved_A, saved_P;
-bool inverter_error;
 
 uint8_t mqtt_conn;
 uint32_t timestamp_on_wifi_begin, timestamp_last_published, timestamp_last_mqtt_reconn;
@@ -187,7 +186,7 @@ void publish_data()
     sprintf(buff, "%0.3f", generated_wh);
     mqttClient.publish(MQTT_STATE_TOPIC_WH, buff);
     mqttClient.publish(MQTT_STATE_TOPIC_MPPT_STATE, mppt_state_str[mppt_state]);
-    mqttClient.publish(MQTT_STATE_TOPIC_INVERTER_ERROR, String(inverter_error).c_str());
+    mqttClient.publish(MQTT_STATE_TOPIC_INVERTER_ERROR, (mppt_state == ERROR) ? "1" : "0");
     mqttClient.publish(MQTT_STATE_TOPIC_SIG, String(signal_quality).c_str());
     mqttClient.publish(MQTT_STATE_TOPIC_UPTIME, String(millis() / 1000).c_str());
 }
@@ -249,10 +248,11 @@ void state_machine()
                 {
                     timestamp_on_mqtt_begin = 0;
                     timestamp_pub_started = millis();
-                    analogWrite(STATUS_LED, 240);
+                    analogWrite(STATUS_LED, STATUS_LED_IDLE_BRIGHTNESS_INV);
                     stage = CONNECTED_TO_BROKER;
                 }
-                else if (!timestamp_last_mqtt_reconn || millis() - timestamp_last_mqtt_reconn > MQTT_RECONN_PERIOD_MS)
+                else if (!timestamp_last_mqtt_reconn ||
+                         millis() - timestamp_last_mqtt_reconn > MQTT_RECONN_PERIOD_MS)
                 {
                     reconnect();
                     timestamp_last_mqtt_reconn = millis();
@@ -302,7 +302,8 @@ void read_inverter_states()
     static unsigned long run_start_time = 0;
     if (inverter_run_input)
     {
-        if (millis() - run_start_time > CONSIDER_MPPT_LOCKED_MS)
+        if (millis() - run_start_time > CONSIDER_MPPT_LOCKED_MS &&
+            mppt_state != MPPT_LOCKED)
         {
             mppt_state = MPPT_LOCKED;
         }
@@ -330,24 +331,25 @@ void read_inverter_states()
         }
 
         // If pulse period is in range, then MPPT is adjusting
-        if (pulse_period > 500 && pulse_period < 1500)
+        if (pulse_period > INVERTER_ADJ_PERIOD_LO_MS &&
+            pulse_period < INVERTER_ADJ_PERIOD_HI_MS &&
+            mppt_state != MPPT_ADJUSTING)
         {
             mppt_state = MPPT_ADJUSTING;
         }
     }
 
     // Check if inverter_error flag should be set
-    if (inverter_error_input > 400)
+    if (inverter_error_input > INVERTER_ERROR_ANALOG_THRESHOLD)
     {
-        if (millis() - error_start_time > 5000)
+        if (millis() - error_start_time > CONSIDER_INVERTER_ERROR_MS &&
+            mppt_state != ERROR)
         {
-            inverter_error = true;
             mppt_state = ERROR;
         }
     }
     else
     {
-        inverter_error = false;
         // Reset error_start_time
         error_start_time = millis();
     }

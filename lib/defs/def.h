@@ -37,19 +37,24 @@
 #define MQTT_CMD_OFF                    "0"
 
 // Inverter constants
-#define CONSIDER_MPPT_LOCKED_MS 5000
+#define CONSIDER_MPPT_LOCKED_MS         5000
+#define CONSIDER_INVERTER_ERROR_MS      5000
+#define INVERTER_ERROR_ANALOG_THRESHOLD 400
+#define INVERTER_ADJ_PERIOD_LO_MS       500
+#define INVERTER_ADJ_PERIOD_HI_MS       1500
 
+#define STATUS_LED_IDLE_BRIGHTNESS_INV 240
 // Interval between publishing data
-#define PUBLISH_INTERVAL_FAST_MS 1000
+#define PUBLISH_INTERVAL_FAST_MS       1000
 // Some delay to process MQTT messages before going to sleep
-#define DELAY_AFTER_PUBLISH_MS   500
+#define DELAY_AFTER_PUBLISH_MS         500
 /* Interval between reattempting connection to the WiFi
     after unsuccessful reconnection during MAX_WIFI_RECONN_TIME_MS period*/
-#define CONN_FAILED_TIMEOUT_MS   10 * 60 * 1000 // 10 minutes
+#define CONN_FAILED_TIMEOUT_MS         10 * 60 * 1000 // 10 minutes
 // Period between MQTT tries to reconnect to the broker
-#define MQTT_RECONN_PERIOD_MS    2000 // 2 seconds
+#define MQTT_RECONN_PERIOD_MS          2000 // 2 seconds
 // Save data to EEPROM after this number of cycles
-#define SAVE_WH_AFTER_CNT        10
+#define SAVE_WH_AFTER_CNT              10
 
 // IO pins
 #define SDA_PIN        4
