@@ -1,0 +1,24 @@
+[env]
+build_flags =
+    -D WIFI_SSID=\"Neo\"
+    -D WIFI_PASSWORD=\"redorblue\"
+    -D HOSTNAME=\"Solar-Inverter-Monitor\"
+    -D OTA_PASSWORD=\"topsecret\"
+    -D MQTT_SERVER=\"1.2.3.4\"
+    -D MQTT_SERVER_PORT=1883
+    -D MQTT_LOGIN=\"topsecret\"
+    -D MQTT_PASSWORD=\"topsecret\"
+    -D NTP_SERVER=\"1.2.3.4\"
+
+; Optionally predefine some settings
+[env:wemos_d1_mini]
+monitor_port = COM2
+monitor_speed = 115200
+monitor_filters = time
+upload_port = COM2
+upload_speed = 921600
+
+[env:wemos_d1_mini_OTA]
+upload_port = Solar-Inverter-Monitor.local
+upload_flags =
+	--auth=topsecret

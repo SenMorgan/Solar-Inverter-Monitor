@@ -15,7 +15,6 @@
 #include <INA226.h>
 // #include <EEPROM.h>
 
-#include "credentials.h"
 #include "def.h"
 
 WiFiClient espClient;
@@ -208,7 +207,7 @@ void state_machine()
             {
                 // Setup WiFi connection
                 WiFi.mode(WIFI_STA);
-                WiFi.begin(WIFI_SSID, WIFI_PASSWD);
+                WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
                 timestamp_on_wifi_begin = millis();
                 stage = WIFI_CONNECTING;
             }
@@ -374,7 +373,7 @@ void setup()
     mqttClient.setCallback(callback);
 
     // Arduino OTA initializing
-    ArduinoOTA.setHostname(OTA_HOSTNAME);
+    ArduinoOTA.setHostname(HOSTNAME);
     ArduinoOTA.setPassword(OTA_PASSWORD);
     ArduinoOTA.begin();
     ArduinoOTA.onProgress([](uint16_t progress, uint16_t total)
