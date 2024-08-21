@@ -397,5 +397,6 @@ void loop()
 
     state_machine();
 
-    yield();
+    // Delay for yield
+    delay(10);
 }
