@@ -13,6 +13,8 @@
 #include <PubSubClient.h>
 #include <Wire.h>
 #include <INA226.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 // #include <EEPROM.h>
 
 #include "def.h"
@@ -21,6 +23,10 @@ WiFiClient espClient;
 PubSubClient mqttClient(espClient);
 
 INA226 ina226(Wire);
+
+// Setup a oneWire instance and pass it to Dallas Temperature.
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature ds18b20(&oneWire);
 
 enum
 {
@@ -41,7 +47,7 @@ enum
 // EEPROM variables
 float generated_wh;
 // Global variables
-float measured_V, measured_A, measured_P, saved_V, saved_A, saved_P;
+float measured_V, measured_A, measured_P, saved_V, saved_A, saved_P, temp;
 
 uint8_t mqtt_conn;
 uint32_t timestamp_on_wifi_begin, timestamp_last_published, timestamp_last_mqtt_reconn;
@@ -86,6 +92,19 @@ void read_ina226_values(void)
     //         }
     //     }
     // }
+}
+
+void read_temperature()
+{
+    static unsigned long last_temp_read = 0;
+
+    // Update temperature every publish interval
+    if (millis() - last_temp_read > PUBLISH_INTERVAL_FAST_MS)
+    {
+        ds18b20.requestTemperatures();
+        temp = ds18b20.getTempCByIndex(0);
+        last_temp_read = millis();
+    }
 }
 
 int8_t read_signal_quality()
@@ -184,6 +203,8 @@ void publish_data()
     mqttClient.publish(MQTT_STATE_TOPIC_POWER, buff);
     sprintf(buff, "%0.3f", generated_wh);
     mqttClient.publish(MQTT_STATE_TOPIC_WH, buff);
+    sprintf(buff, "%0.3f", temp);
+    mqttClient.publish(MQTT_STATE_TOPIC_TEMP, buff);
     mqttClient.publish(MQTT_STATE_TOPIC_MPPT_STATE, mppt_state_str[mppt_state]);
     mqttClient.publish(MQTT_STATE_TOPIC_INVERTER_ERROR, (mppt_state == ERROR) ? "1" : "0");
     mqttClient.publish(MQTT_STATE_TOPIC_SIG, String(signal_quality).c_str());
@@ -387,11 +408,16 @@ void setup()
                      INA226_SHUNT_CONV_TIME_1100US, INA226_MODE_SHUNT_BUS_CONT);
     ina226.calibrate(SHUNT_VALUE, MAX_CURRENT_EXCEPTED_A);
     ina226.enableConversionReadyAlert();
+
+    // Initialize DS18B20
+    ds18b20.begin();
 }
 
 void loop()
 {
     read_ina226_values();
+
+    read_temperature();
 
     read_inverter_states();
 

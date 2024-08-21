@@ -48,6 +48,13 @@ sensor:
     unit_of_measurement: "Wh"
     state_class: total_increasing
 
+  - name: "Solar Panel Inverter Temperature"
+    device_class: temperature
+    state_topic: "/solar-inverter-monitor/state/temp"
+    value_template: "{{ value | default(0) }}"
+    unit_of_measurement: "°C"
+    state_class: measurement
+
   - name: "Solar Panel State"
     state_topic: "/solar-inverter-monitor/state/mppt"
     value_template: "{{ value }}"
@@ -81,9 +88,7 @@ button:
 ```
 
 ## Dependencies
-All dependencies will be automatically installed by PlatformIO:
-- BSEC Software Library@1.6.1480
-- PubSubClient@2.8.0
+All dependencies will be automatically installed by PlatformIO
 
 ## Copyright
 Copyright (c) 2024 Sen Morgan. Licensed under the MIT license, see LICENSE.md

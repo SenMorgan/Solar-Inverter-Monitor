@@ -29,6 +29,7 @@
 #define MQTT_STATE_TOPIC_AMP            DEFAULT_TOPIC "state/amp"
 #define MQTT_STATE_TOPIC_POWER          DEFAULT_TOPIC "state/watt"
 #define MQTT_STATE_TOPIC_WH             DEFAULT_TOPIC "state/wh"
+#define MQTT_STATE_TOPIC_TEMP           DEFAULT_TOPIC "state/temp"
 #define MQTT_STATE_TOPIC_MPPT_STATE     DEFAULT_TOPIC "state/mppt"
 #define MQTT_STATE_TOPIC_INVERTER_ERROR DEFAULT_TOPIC "state/error"
 #define MQTT_STATE_TOPIC_SIG            DEFAULT_TOPIC "state/signal-quality"
@@ -62,5 +63,6 @@
 #define INVERTER_RUN   14
 #define INVERTER_ERROR A0
 #define STATUS_LED     2
+#define ONE_WIRE_BUS   12   // DS18B20 on pin D6
 
 #endif // _DEF_H_
